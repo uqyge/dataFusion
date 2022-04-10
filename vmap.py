@@ -77,9 +77,9 @@ data = [p.rvs(samples), t.rvs(samples), r.rvs(samples)]
 samples = 100_000
 data = [p.rvs(samples), t.rvs(samples), r.rvs(samples)]
 d2 = np.asarray(data).T
-d2.shape
+data[0].min()
 
-
+#%%
 v_model = jax.vmap(model)
 # %%
 # %time
@@ -114,4 +114,10 @@ plt.plot(x, kde.pdf(x))
 # %%
 # %%
 (tmp-tmp2).sum()
+# %%
+sum(d2[:,0]>0)
+# %%
+(data[0]>0).sum()
+# %%
+data[0].min()
 # %%

@@ -1,6 +1,7 @@
 #%%
 import collections
 
+import jax
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as stats
@@ -20,9 +21,9 @@ def ecdf(exp):
 
 
 def kde_cdf(kde, x):
-    return np.array(
-        [ndtr(np.ravel(item - kde.dataset) / kde.factor).mean() for item in x]
+    return np.array(ctor).mean() for item in x]
     )
+        [ndtr(np.ravel(item - kde.dataset) / kde.fa
 
 
 # %%
@@ -59,7 +60,7 @@ class f:
         self.t = stats.uniform(64, 66 - 64)
         self.r = stats.uniform(8.48, 8.52 - 8.48)
 
-        samples = 20_000
+        samples = 100_000
         data = np.asarray(
             [
                 self.p.rvs(samples, random_state=1),
@@ -67,22 +68,24 @@ class f:
                 self.r.rvs(samples, random_state=1),
             ]
         ).T
-        y = [self.model(*data[i]) for i in range(samples)]
+        # y = [self.model(data[i]) for i in range(samples)]
+        y = jax.vmap(self.model)(data)
         kde = stats.gaussian_kde(y)
         self.kde = kde
 
-    def model(self, p, t, r):
+    # def model(self, p, t, r):
+    def model(self, params):
+        p, t, r = params
         E = 128e6
         nu = 0.24839
 
-        p = p * 6894.757
+        p = abs(
+            p * 6894.757
+        )  # prevent getting a negative p, which could break sqrt in sigma.
         # p = max(0, p * 6894.757)
         t = t * 1e-6
         r = r * 1e-3
 
-        # sigma = ((-np.sqrt(2) / 9) * E * (t / r)) * np.sqrt(
-        #     1 / (1 - nu**2) + 4 * p / E * (r / t) ** 2
-        # )
         sigma = ((-(2**0.5) / 9) * E * (t / r)) * (
             1 / (1 - nu**2) + 4 * p / E * (r / t) ** 2
         ) ** 0.5
@@ -101,7 +104,7 @@ class f:
 #%%
 mu = 20
 sigma = 2
-f([mu, sigma]).model(20, 64, 8.48)
+f([mu, sigma]).model([20, 64, 8.48])
 # %%
 x = np.linspace(0, 40, 100)
 plt.plot(x, f([mu, sigma]).pdf(x))
@@ -114,7 +117,7 @@ def obj_me(x0, a=0, b=0):
     sigma = x0[1]
     # x = np.linspace(0, 40, 200)
     x = np.linspace(0, 50, 100)
-    return sum(kl_div(f([20, 5]).pdf(x), f([mu, sigma]).pdf(x))) / len(x)
+    return sum(kl_div(f([20, 1.5]).pdf(x), f([mu, sigma]).pdf(x))) / len(x)
 
 
 print(f"{obj_me([20, 2])=}")
@@ -130,7 +133,7 @@ cons = [
 ]
 
 # %%
-x0 = np.array([20, 5])
+x0 = np.array([20, 1.5])
 res = minimize(
     obj_me,
     x0,
@@ -170,7 +173,7 @@ plt.legend()
 plt.title("pdf of Y")
 
 # %%
-x_test = np.linspace(0, 30, 100)
+x_test = np.linspace(0, 40, 100)
 plt.plot(x_test, stats.norm(*res.x).pdf(x_test), label=f"{res.x.round(1)}")
 plt.plot(x_test, stats.norm(*x0).pdf(x_test), label=f"{x0}")
 plt.legend()
