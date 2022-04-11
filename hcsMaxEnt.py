@@ -6,25 +6,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as stats
 from scipy.optimize import minimize
-from scipy.special import kl_div, ndtr
+from scipy.special import kl_div
 
-# from exp import ecdf
-
-
-def ecdf(exp):
-    exp_ou = sorted(set(exp))
-    freq = [collections.Counter(exp)[i] for i in exp_ou]
-    # print(f"freq=")
-    cdf = np.cumsum(freq) / sum(freq)
-    # print(f"cdf=")
-    return dict(zip(exp_ou, cdf))
-
-
-def kde_cdf(kde, x):
-    return np.array(
-        [ndtr(np.ravel(item - kde.dataset) / kde.factor).mean() for item in x]
-    )
-
+from hcsClass import ecdf, f
 
 # %%
 exp = [13.43, 17.47, 14.22, 10.80, 10.24833, 13.79]
@@ -50,69 +34,8 @@ plt.fill_between(
 plt.xlim([0, 30])
 plt.legend()
 
-
-# %%
-class f:
-    def __init__(self, params):
-        mu = params[0]
-        sigma = params[1]
-        self.p = stats.norm(mu, sigma)
-        self.t = stats.uniform(64, 66 - 64)
-        self.r = stats.uniform(8.48, 8.52 - 8.48)
-
-        samples = 100_000
-        data = np.asarray(
-            [
-                self.p.rvs(samples, random_state=1),
-                self.t.rvs(samples, random_state=1),
-                self.r.rvs(samples, random_state=1),
-            ]
-        ).T
-
-        y = jax.vmap(self.model)(data)
-        kde = stats.gaussian_kde(y)
-        self.kde = kde
-
-    # def model(self, p, t, r):
-    def model(self, params):
-        p, t, r = params
-        E = 128e6
-        nu = 0.24839
-
-        p = abs(
-            p * 6894.757
-        )  # prevent getting a negative p, which could break sqrt in sigma.
-        # p = max(0, p * 6894.757)
-        t = t * 1e-6
-        r = r * 1e-3
-
-        sigma = ((-(2**0.5) / 9) * E * (t / r)) * (
-            1 / (1 - nu**2) + 4 * p / E * (r / t) ** 2
-        ) ** 0.5
-
-        out = p * np.pi * r**2 - 2 * np.pi * t * r * sigma
-        c = 0.45
-        return c * out
-
-    def pdf(self, x):
-        return self.kde.pdf(x)
-
-    def cdf(self, x):
-        return kde_cdf(self.kde, x)
-
-
 #%%
-mu = 20
-sigma = 2
-f([mu, sigma]).model([20, 64, 8.48])
-# %%
-x = np.linspace(0, 40, 100)
-plt.plot(x, f([mu, sigma]).pdf(x))
-#%%
-plt.plot(x, f([mu, sigma]).cdf(x))
-
-#%%
-def obj_me(x0, a=0, b=0):
+def obj_maxEnt(x0, a=0, b=0):
     mu = x0[0]
     sigma = x0[1]
     # x = np.linspace(0, 40, 200)
@@ -120,7 +43,7 @@ def obj_me(x0, a=0, b=0):
     return sum(kl_div(f([20, 1.5]).pdf(x), f([mu, sigma]).pdf(x))) / len(x)
 
 
-print(f"{obj_me([20, 2])=}")
+print(f"{obj_maxEnt([20, 2])=}")
 
 # %%
 cons = [
@@ -129,13 +52,15 @@ cons = [
         "fun": lambda x, exp_ou, y_ecdf_l: f(x).cdf([exp_ou[i]]) - y_ecdf_l[i],
         "args": (exp_ou, y_ecdf_l),
     }
-    for i in range(5)
+    # for i in range(len(exp))
+    # for i in range(2)
+    for i in [0, 1, 2, 4]
 ]
 
 # %%
 x0 = np.array([20, 1.5])
 res = minimize(
-    obj_me,
+    obj_maxEnt,
     x0,
     args=(exp_ou, y_ecdf_l),
     method="COBYLA",
