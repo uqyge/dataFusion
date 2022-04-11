@@ -26,11 +26,11 @@ def kde_cdf(kde, x):
 
 class f:
     def __init__(self, params):
-        mu = params[0]
-        sigma = params[1]
+        mu, sigma, c = params
         self.p = stats.norm(mu, sigma)
         self.t = stats.uniform(64, 66 - 64)
         self.r = stats.uniform(8.48, 8.52 - 8.48)
+        self.c = c
 
         samples = 100_000
         data = np.asarray(
@@ -64,7 +64,7 @@ class f:
         ) ** 0.5
 
         out = p * np.pi * r**2 - 2 * np.pi * t * r * sigma
-        return c * out
+        return self.c * out
 
     def pdf(self, x):
         return self.kde.pdf(x)
@@ -77,10 +77,11 @@ if __name__ == "__main__":
     #%%
     mu = 20
     sigma = 2
-    print(f"{f([mu, sigma]).model([20, 64, 8.48])=}")
+    c = 0.5
+    print(f"{f([mu, sigma, c]).model([20, 64, 8.48])=}")
     x = np.linspace(0, 40, 100)
-    plt.plot(x, f([mu, sigma]).pdf(x), label="pdf")
-    plt.plot(x, f([mu, sigma]).cdf(x), label="cdf")
+    plt.plot(x, f([mu, sigma, c]).pdf(x), label="pdf")
+    plt.plot(x, f([mu, sigma, c]).cdf(x), label="cdf")
     plt.legend()
 
 # %%

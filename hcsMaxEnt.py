@@ -38,18 +38,21 @@ plt.legend()
 def obj_maxEnt(x0, a=0, b=0):
     mu = x0[0]
     sigma = x0[1]
+    # c = x0[2]
+    c = 0.45
     # x = np.linspace(0, 40, 200)
     x = np.linspace(0, 50, 100)
-    return sum(kl_div(f([20, 1.5]).pdf(x), f([mu, sigma]).pdf(x))) / len(x)
+    return sum(kl_div(f([20, 1.5, 0.45]).pdf(x), f([mu, sigma, c]).pdf(x))) / len(x)
 
 
-print(f"{obj_maxEnt([20, 2])=}")
+print(f"{obj_maxEnt([20, 1.5, 0.35])=}")
 
 # %%
 cons = [
     {
         "type": "ineq",
-        "fun": lambda x, exp_ou, y_ecdf_l: f(x).cdf([exp_ou[i]]) - y_ecdf_l[i],
+        "fun": lambda x, exp_ou, y_ecdf_l: f([x[0], x[1], 0.45]).cdf([exp_ou[i]])
+        - y_ecdf_l[i],
         "args": (exp_ou, y_ecdf_l),
     }
     # for i in range(len(exp))
@@ -58,6 +61,7 @@ cons = [
 ]
 
 # %%
+# x0 = np.array([20, 1.5, 0.5])
 x0 = np.array([20, 1.5])
 res = minimize(
     obj_maxEnt,
@@ -99,8 +103,8 @@ plt.title("pdf of Y")
 
 # %%
 x_test = np.linspace(0, 40, 100)
-plt.plot(x_test, stats.norm(*res.x).pdf(x_test), label=f"{res.x.round(1)}")
-plt.plot(x_test, stats.norm(*x0).pdf(x_test), label=f"{x0}")
+plt.plot(x_test, stats.norm(*res.x[:2]).pdf(x_test), label=f"{res.x.round(1)}")
+plt.plot(x_test, stats.norm(*x0[:2]).pdf(x_test), label=f"{x0}")
 plt.legend()
 plt.title("pdf of p")
 # %%
